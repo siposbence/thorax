@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Thorax Power Density Spectrum</title>
+    <style>
+        body {
+            font-family: Arial;
+            font-size: 20px;
+        }
+
+        h1 {
+            display: block;
+            font-size: 2em;
+            margin-top: 1.5em;
+            margin-bottom: 1em;
+            margin-left: 0;
+            margin-right: 0;
+            font-weight: bold;
+        }
+
+        h2 {
+            display: block;
+            font-size: 1em;
+            margin-top: 0.67em;
+            margin-bottom: 0.67em;
+            margin-left: 0;
+            margin-right: 0;
+            font-weight: bold;
+        }
+
+        .slidecontainer {
+            width: 100%;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 25px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+<h1>
+    <img src="logo.png" alt="Thorax Logo" style="width:100px">
+    <br>
+    Thorax respiratory and heart rate
+</h1>
+<h2>
+    <a href="main.html" class="button">Main Page</a>
+</h2>
+<br>
+<br>
+<select id="ddlViewBy">
+    <option value="1">x</option>
+    <option value="2" selected="selected">y</option>
+    <option value="3">z</option>
+</select>
+<br>
+<br>
+<pre class="output">
+Wait 30s!
+</pre>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/p5@1.0.0/lib/p5.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.15.1/dist/tf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.6.0/NoSleep.min.js"></script>
+<script>
+
+
+
+    let xs = [];
+    let ys = [];
+    let zs = [];
+    let ii = 0;
+    var tmp = 0;
+    const size = 128;
+    const skip = 6;
+    let data;
+    let sf;
+    let t;
+    let output = document.querySelector('.output');
+    var slider = document.getElementById("ddlViewBy");
+    tf.setBackend('webgl');
+    function pwr_spect( hr_low = 40, hr_high = 120, rr_low = 10, rr_high = 40) {
+        //console.log(tf.memory());
+        let real = tf.tensor(data);
+        //console.log(tf.memory());
+        let imag = tf.zeros([data.length]);
+
+        let input = tf.complex(real, imag);
+        let res = tf.spectral.fft(input);
+
+        let Fs = 1/t;
+        let c = res.abs().square();
+        let d = tf.scalar(1/(data.length*Fs));
+        let pxx = c.mul(d);
+        let hr_min = Math.floor(hr_low/60*data.length/sf);
+        let rr_min = Math.floor(rr_low/60*data.length/sf);
+        let hr_max = Math.ceil(hr_high/60*data.length/sf);
+        let rr_max = Math.ceil(rr_high/60*data.length/sf);
+        let freki = tf.linspace(0, data.length, Math.ceil(data.length));
+        let hr_min_array = tf.fill(freki.shape, hr_min);
+        let hr_max_array = tf.fill(freki.shape, hr_max);
+        let rr_min_array = tf.fill(freki.shape, rr_min);
+        let rr_max_array = tf.fill(freki.shape, rr_max);
+        let hr_min_array_log = tf.greater(freki, hr_min_array);
+        let rr_min_array_log = tf.greater(freki, rr_min_array);
+        let hr_max_array_log = tf.less(freki, hr_max_array);
+        let rr_max_array_log = tf.less(freki, rr_max_array);
+        let temp_hr = tf.where(tf.logicalAnd(hr_min_array_log, hr_max_array_log), pxx, tf.zerosLike(pxx));
+        let temp_rr = tf.where(tf.logicalAnd(rr_min_array_log, rr_max_array_log), pxx, tf.zerosLike(pxx));
+        let hr =  temp_hr.argMax().dataSync();//.dataSync();//data.length*sf*pxx.abs().slice([hr_min], [hr_max]).argMax().dataSync();
+        let rr = temp_rr.argMax().dataSync();//.dataSync();//data.length*sf*pxx.abs().slice([rr_min], [rr_max]).argMax().dataSync();
+        console.log([hr, rr]);
+        tf.dispose(freki);tf.dispose(hr_min_array);tf.dispose(hr_max_array);tf.dispose(rr_min_array);tf.dispose(rr_max_array);
+        tf.dispose(hr_min_array_log);tf.dispose(rr_min_array_log);tf.dispose(hr_max_array_log);tf.dispose(rr_max_array_log);
+        tf.dispose(temp_hr);tf.dispose(temp_rr);tf.dispose(d);tf.dispose(c);tf.dispose(pxx);tf.dispose(res);
+        tf.dispose(input);tf.dispose(imag);tf.dispose(real);
+        //console.log(tf.memory());
+        output.innerHTML  += "hearth rate: " + 60/data.length*sf*hr + "\n";
+        output.innerHTML  += "respiratory: " + 60/data.length*sf*rr + "\n";
+        output.querySelectorAll('*').forEach(n => n.remove());
+        return undefined;
+    }
+    window.addEventListener('devicemotion', function(event) {
+
+        var noSleep = new NoSleep();
+
+        var wakeLockEnabled = false;
+        let slider_value = slider.value ;
+
+        console.log(slider_value);
+
+        let x = event.rotationRate.alpha;  // In degree in the range [-180,180]
+        let y = event.rotationRate.beta;
+        let z = event.rotationRate.gamma;
+        t = event.interval;
+
+        //console.log(xs)
+        if (slider_value==1 && ii%skip==0){xs.push(x);}
+        if (slider_value==2 && ii%skip==0){ys.push(y);}
+        if (slider_value==3 && ii%skip==0){zs.push(z);}
+        if ((slider_value==1 && xs.length > size && ii%(10*skip) == 0)||(slider_value==2 && ys.length > size && ii%(10*skip)== 0)||(slider_value==3 && zs.length > size && ii%(10*skip) == 0)) {
+
+            //output.innerHTML  = "alpha : " + z + "\n";
+            //output.innerHTML  += "beta : " + x + "\n";
+            //output.innerHTML += "gamma: " + y + "\n";
+            output.innerHTML = "Res: " + 60*1/size*1000/t/skip + "\n";
+            if (slider_value==1){
+                xs = xs.slice(Math.max(xs.length - 128, 0));
+                console.log(xs.length);
+                data = xs;
+                sf = 1000/t/skip;
+                const tidytmp = tf.tidy(pwr_spect);
+
+            }
+            if (slider_value==2){
+                ys = ys.slice(Math.max(ys.length - 128, 0));
+                console.log(ys.length);
+                data = ys;
+                sf = 1000/t/skip;
+                const tidytmp = tf.tidy(pwr_spect);
+                //console.log(tf.memory());
+
+            }
+            if (slider_value==3){
+                zs = zs.slice(Math.max(zs.length - 128, 0));
+                console.log(zs.length);
+                data = zs;
+                sf = 1000/t/skip;
+                const tidytmp = tf.tidy(pwr_spect);
+
+
+            }
+        }
+
+
+        ii += 1;
+
+    });
+    document.removeEventListener("devicemotion", function(event){console.log("siker")});
+
+</script>
+</body>
+
+
+
+</html>
+
+

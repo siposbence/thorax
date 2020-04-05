@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Thorax Login Page</title>
+    <style>
+    body {
+        font-family: Arial;
+        font-size: 20px;
+    }
+
+    h1 { 
+  	     display: block;
+  	     font-size: 2em;
+  	     margin-top: 1.5em;
+  	     margin-bottom: 1em;
+  	     margin-left: 0;
+         margin-right: 0;
+  	     font-weight: bold;
+    }
+    </style>
+</head>
+
+<body>
+<h1>
+    <img src="logo.png" alt="Thorax Logo" style="width:100px">
+    <br>
+    Thorax Login Page
+</h1>
+ 
+<form name="login">
+<table>
+  <tr>
+    <td>Username</td>
+    <td><input type="text" name="userid"/></td> 
+  </tr>
+  <tr>
+    <td>Password</td>
+    <td><input type="password" name="pswd"/></td>
+  </tr>
+</table>
+<br>
+<input type="button" onclick="check(this.form)" value="Login"/>
+<input type="reset" value="Cancel"/>
+</form>
+admin@admin
+<script>
+function check(form)//Check userid and pswd
+{
+ if(form.userid.value == "admin" && form.pswd.value == "admin")
+  {
+    window.open('main.html', '_self')
+  }
+ else
+ {
+   alert("Incorrect Username or Password")
+  }
+}
+</script>
+</body>
+
+
+
+</html>
+
+

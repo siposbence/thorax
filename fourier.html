@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Thorax Fourier Transformed</title>
+    <style>
+    body {
+        font-family: Arial;
+        font-size: 20px;
+    }
+
+    h1 { 
+  	display: block;
+  	font-size: 2em;
+  	margin-top: 1.5em;
+  	margin-bottom: 1em;
+  	margin-left: 0;
+  	margin-right: 0;
+  	font-weight: bold;
+    }
+    
+    h2 { 
+  	display: block;
+  	font-size: 1em;
+  	margin-top: 0.67em;
+  	margin-bottom: 0.67em;
+  	margin-left: 0;
+  	margin-right: 0;
+  	font-weight: bold;
+    }
+    </style>
+</head>
+
+<body>
+<h1>
+    <img src="logo.png" alt="Thorax Logo" style="width:100px">
+    <br>
+    Thorax Fourier Transformed
+</h1>
+<h2>
+    <a href="main.html" class="button">Main Page</a>
+</h2>
+<input type="button" id="toggle" value="Wake Lock disabled" />
+<br>
+<br>
+<pre class="output">
+    alpha:
+    beta:
+    gamma:
+    res:
+</pre>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/p5@1.0.0/lib/p5.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.15.1/dist/tf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.6.0/NoSleep.min.js"></script>
+<script>
+    var xs = [0];
+    var ys = [0];
+    var zs = [0];
+    var ii = 0;
+    const size = 128;
+    const skip = 12;
+    
+    function setup() {
+        createCanvas(512, 256);
+        noFill();
+    }
+    
+    //Motion event + no sleep
+    window.addEventListener('devicemotion', function(event) {
+	//No sleep
+	var noSleep = new NoSleep();
+        var wakeLockEnabled = false;
+        var toggleEl = document.querySelector("#toggle");
+        toggleEl.addEventListener('click', function() {
+            if (!wakeLockEnabled) {
+                noSleep.enable(); //Keep the screen on
+                wakeLockEnabled = true;
+                toggleEl.value = "Wake Lock enabled";
+                document.body.style.backgroundColor = "gray";
+            } else {
+                noSleep.disable(); //Let the screen turn off
+                wakeLockEnabled = false;
+                toggleEl.value = "Wake Lock disabled";
+                document.body.style.backgroundColor = "";
+            }
+        }, false);
+	
+	//Motion
+        var output = document.querySelector('.output');
+	console.log(rotationX);
+	console.log(rotationY);
+	console.log(rotationZ);
+	console.log(accelerationX);
+	console.log(accelerationY);
+	console.log(accelerationZ);
+        console.log(event.interval);
+        var x = event.rotationRate.alpha;  // In degree in the range [-180,180]
+        var y = event.rotationRate.beta;   // In degree in the range [-180,180]
+        var z = event.rotationRate.gamma;  // In degree in the range [-180,180]
+        var fps = event.interval;
+        xs.push(x);
+        ys.push(y);
+        zs.push(z);
+        if (xs.length > 512) {
+            var tmp = xs.shift();
+            tmp = ys.shift();
+            tmp = zs.shift();
+        }
+        console.log([x,y,z]);
+        function movingAvg(array, count, qualifier){
+
+            //Calculate average for subarray
+            var avg = function(array, qualifier){
+
+                var sum = 0, count = 0, val;
+                for (var i in array){
+                    val = array[i];
+                    if (!qualifier || qualifier(val)){
+                        sum += val;
+                        count++;
+                    }
+                }
+
+                return sum / count;
+            };
+
+            var result = [], val;
+
+            //Pad beginning of result with null values
+            for (var i=0; i < count-1; i++)
+                result.push(null);
+
+            //Calculate average for each subarray and add to result
+            for (var i=0, len=array.length - count; i <= len; i++){
+
+                val = avg(array.slice(i, i + count), qualifier);
+                if (isNaN(val))
+                    result.push(null);
+                else
+                    result.push(val);
+            }
+
+            return result;
+        }
+        //https://stackoverflow.com/questions/19981713/html5-js-chart-with-moving-average
+        function plot(data, col) {
+            strokeWeight(3);
+            stroke(col[0], col[1], col[2]);
+            beginShape(LINES);
+            const real = tf.tensor(data);
+            const imag = tf.zeros([data.length]);
+            const input = tf.complex(real, imag);
+            const res = tf.spectral.fft(input);
+            let a = res.abs().print()
+            console.log(a);
+            for (i = 0; i < data.length; i++) {
+                //fill(237, 34, 93);
+                //noStroke();
+                vertex(i, map(data[i]+180, 0, 255, height, 0));
+            }
+            endShape();
+        }
+        function plot2(data, col) {
+            stroke(3);
+            // draw lines
+            const dotLayer = tf.layers.dot({axes: -1});
+            let px = 0;
+            let py = data[0];
+            stroke(col[0], col[1], col[2]);
+            const real = tf.tensor(data);
+            const imag = tf.zeros([data.length]);
+            const input = tf.complex(real, imag);
+            const res = tf.spectral.fft(input);
+            const kernel = tf.ones([20]);
+            let a = res.abs().arraySync();
+            console.log(a);
+            a = movingAvg(a, 10)
+            for(let i =0; i < a.length/2; i++){
+                let x = i*2;
+                let y = -(a[i])+253;
+                //console.log((data[i])*128/Math.max(...data)+128)
+                line(px, py, x, y);
+
+                //Last position
+                px = x;
+                py = y;
+        }}
+        function draw() {
+            background(200);
+            plot2(xs, [100,100,100]);
+            plot2(ys, [0,200,100]);
+            plot2(zs, [100, 0,200]);
+            //let spectrum = fft.analyze();
+        }
+        if (ii % 200 == 199){
+            draw();
+        }
+        ii += 1;
+
+        //updateChart();
+        //var arr = [1, 2, 3, 4];
+        //var theRemovedElement = arr.shift(); // theRemovedElement == 1
+        //console.log(arr); // [2, 3, 4]
+        output.innerHTML = "alpha : " + z + "\n";
+        output.innerHTML += "beta : " + x + "\n";
+        output.innerHTML += "gamma: " + y + "\n";
+	output.innerHTML += "res: " + 60*1/256*1000/t/skip + "\n";
+        //output.innerHTML += "fps: " + 1000/fps + "\n";
+
+    });
+</script>
+</body>
+
+
+
+</html>
+
+

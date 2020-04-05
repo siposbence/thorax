@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Thorax Main Page</title>
+    <style>
+    body {
+        font-family: Arial;
+        font-size: 20px;
+    }
+
+    h1 { 
+  	     display: block;
+  	     font-size: 2em;
+  	     margin-top: 1.5em;
+  	     margin-bottom: 1em;
+  	     margin-left: 0;
+             margin-right: 0;
+  	     font-weight: bold;
+    }
+    
+    h2 { 
+  	    display: block;
+  	    font-size: 1em;
+  	    margin-top: 0.67em;
+  	    margin-bottom: 0.67em;
+  	    margin-left: 0;
+  	    margin-right: 0;
+  	    font-weight: bold;
+    }
+    </style>
+</head>
+
+<body>
+<h1>
+    <img src="logo.png" alt="Thorax Logo" style="width:100px">
+    <br>
+    Thorax Main Page
+</h1>
+<h2>
+    <a href="raw.html" class="button">Raw Data</a>
+    <br>
+    <a href="fourier.html" class="button">Fourier Transformed</a>
+    <br>
+    <a href="hr_rr.html" class="button">Thorax respiratory and heart rate</a>
+</h2>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/p5@1.0.0/lib/p5.js"></script>
+<script>
+    function setup() {
+    	//Request sensor access on iOS 13 devices
+    	if (typeof(DeviceMotionEvent) !== 'undefined' && typeof(DeviceMotionEvent.requestPermission) === 'function') {
+	    	DeviceMotionEvent.requestPermission()
+                .catch(() => {
+                //Show permission dialog only the first time
+      	    	let askButton = createButton("Allow acess to sensors")
+      	    	askButton.style("font-size", "24px")
+      	    	askButton.position(0, 0)
+      	    	askButton.mousePressed(onAskButtonClicked)
+      	    	throw error
+    	})
+    	.then(() => {
+        	//This runs on subsequent visits
+        	permissionGranted = true
+    	})
+	} else {
+  		nonios13device = true
+  	    	permissionGranted = true
+	}
+    }
+
+    //Handle first time visiting to grant access
+    function onAskButtonClicked() {
+    DeviceMotionEvent.requestPermission().then(response => {
+    if (response === 'granted') {
+      permissionGranted = true
+    } else {
+      permissionGranted = false
+    }
+    this.remove()
+    }).catch(console.error)
+    }
+</script>
+</body>
+
+
+
+</html>
+
+
